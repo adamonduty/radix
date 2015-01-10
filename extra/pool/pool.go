@@ -106,6 +106,12 @@ func (p *Pool) Get() (*redis.Client, error) {
 // what-have-you) it should not be put back in the pool. The pool will create
 // more connections as needed.
 func (p *Pool) Put(conn *redis.Client) {
+	// Drain pipeline queue before returning to the pool
+	for {
+		if err := conn.GetReply().Err; err == redis.PipelineQueueEmptyError {
+			break
+		}
+	}
 	select {
 	case p.pool <- conn:
 	default:
